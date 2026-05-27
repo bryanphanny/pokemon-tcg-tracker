@@ -1,0 +1,26 @@
+discord:
+  webhook_url: "PASTE_YOUR_DISCORD_WEBHOOK_URL_HERE"
+
+target:
+  search_keywords:
+    - "pokemon booster pack"   # confirmed working in API tests
+    - "pokemon tcg"            # confirmed working in API tests
+  discovery_interval_seconds: 300   # how often to search for new products (5 min)
+  stock_check_interval_seconds: 45  # base interval — actual delay is randomized around this
+
+jitter:
+  # Adds randomness so requests don't arrive on a perfectly predictable schedule.
+  # Each wait is randomly chosen between (base - spread) and (base + spread).
+  # Example: base=45, spread=15 → waits anywhere from 30 to 60 seconds.
+  spread_seconds: 15        # how far to vary from the base interval
+  between_requests: 2.0     # max extra seconds to wait between individual TCIN checks
+
+proxy:
+  enabled: false            # set to true and fill in url below to route through a proxy
+  url: "http://user:pass@proxy.provider.com:10000"
+
+# Optional: manually seed TCINs you already know about
+# The discovery loop will find new ones automatically,
+# but you can add known ones here to start tracking immediately
+manual_tcins:
+  - "91234567"  # example — replace or remove
