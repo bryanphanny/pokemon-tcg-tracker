@@ -77,24 +77,40 @@ def discovery_loop(config: dict):
 def stock_check_loop(config: dict):
     webhook = config["discord"]["webhook_url"]
     keywords = config["target"]["search_keywords"]
-    known_tcins = set(db.get_all_tcins())
 
-    if not known_tcins:
-        log.info("[stock] no products in DB yet — waiting for discovery loop")
-        return
-
-    # Collect all currently purchasable TCINs across all keywords
-    purchasable: set[str] = set()
+    # Collect all currently purchasable products across all keywords.
+    # search_purchasable returns full product dicts, not just TCINs, because
+    # Target's filter=true results overlap only partially with filter=false results —
+    # items that only surface under filter=true would never be discovered otherwise.
+    purchasable_products: dict[str, dict] = {}
     for keyword in keywords:
-        purchasable |= target.search_purchasable(keyword)
+        for product in target.search_purchasable(keyword):
+            purchasable_products[product["tcin"]] = product
         time.sleep(random.uniform(1, config["jitter"]["between_requests"]))
 
-    log.info(f"[stock] {len(purchasable)} purchasable TCINs found across all keywords")
+    purchasable_tcins = set(purchasable_products.keys())
+    log.info(f"[stock] {len(purchasable_tcins)} purchasable TCINs found across all keywords")
 
-    # Check each known TCIN against the purchasable set
+    # Seed any purchasable TCIN that discovery never found (filter mismatch).
+    # These are in-stock right now so alert immediately as "in stock".
+    known_tcins = set(db.get_all_tcins())
+    for tcin, product in purchasable_products.items():
+        if tcin not in known_tcins:
+            log.info(f"[stock] 🟢 NEW + IN STOCK (only visible via filter=true): {product['name']} (TCIN {tcin})")
+            db.upsert_product(
+                tcin=tcin,
+                name=product["name"],
+                url=product["url"],
+                price=product["price"],
+                status="IN_STOCK",
+            )
+            notifier.send_stock_alert(webhook, product | {"tcin": tcin})
+            known_tcins.add(tcin)
+
+    # Check every known TCIN against the purchasable set
     for tcin in known_tcins:
         previous_status = db.get_last_status(tcin)
-        current_status = "IN_STOCK" if tcin in purchasable else "NOT_PURCHASABLE"
+        current_status = "IN_STOCK" if tcin in purchasable_tcins else "NOT_PURCHASABLE"
 
         if current_status != previous_status:
             db.upsert_product(

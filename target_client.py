@@ -100,18 +100,18 @@ def search_all(keyword: str) -> list[dict]:
         return []
 
 
-def search_purchasable(keyword: str) -> set[str]:
+def search_purchasable(keyword: str) -> list[dict]:
     """
     Search only items currently available to buy.
-    Returns a set of TCINs. Used by the stock check loop to detect
-    when a known TCIN flips from unavailable to purchasable.
+    Returns list of dicts (tcin, name, url, price) — same shape as search_all.
+    The stock check loop uses this to both detect availability AND seed new TCINs
+    that only appear under filter=true (Target surfaces different results per filter).
     """
     try:
         with _make_client() as client:
             resp = client.get(SEARCH_URL, params=_base_params(keyword, purchasable_only=True))
             resp.raise_for_status()
-            products = _parse_products(resp.json())
-            return {p["tcin"] for p in products}
+            return _parse_products(resp.json())
     except Exception as e:
         print(f"[target] search_purchasable error for '{keyword}': {e}")
-        return set()
+        return []
