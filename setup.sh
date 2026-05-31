@@ -11,7 +11,10 @@ echo "=== Installing Python dependencies ==="
 venv/bin/pip install -r requirements.txt
 
 echo "=== Installing systemd service ==="
-sudo cp pokemon-bot.service /etc/systemd/system/
+# Resolve the actual install directory and inject it into the service file
+INSTALL_DIR="$(pwd)"
+sed "s|/root/pokemon-tcg-tracker|$INSTALL_DIR|g" pokemon-bot.service \
+    | sudo tee /etc/systemd/system/pokemon-bot.service > /dev/null
 sudo systemctl daemon-reload
 sudo systemctl enable pokemon-bot
 
