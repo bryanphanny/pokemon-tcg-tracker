@@ -15,7 +15,7 @@ def send_stock_alert(webhook_url: str, product: dict):
         "url": product["url"],
         "footer": {"text": f"Detected at {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC"},
     }
-    _post(webhook_url, embeds=[embed])
+    _post(webhook_url, content="@everyone", embeds=[embed])
 
 
 def send_new_product_alert(webhook_url: str, product: dict):
@@ -35,14 +35,18 @@ def send_new_product_alert(webhook_url: str, product: dict):
     _post(webhook_url, embeds=[embed])
 
 
-def _post(webhook_url: str, embeds: list):
+def _post(webhook_url: str, embeds: list, content: str | None = None):
     if not webhook_url or webhook_url == "PASTE_YOUR_DISCORD_WEBHOOK_URL_HERE":
         print("[discord] no webhook configured — skipping notification")
         return
 
+    payload: dict = {"embeds": embeds}
+    if content:
+        payload["content"] = content
+
     try:
         with httpx.Client(timeout=10) as client:
-            resp = client.post(webhook_url, json={"embeds": embeds})
+            resp = client.post(webhook_url, json=payload)
             resp.raise_for_status()
     except Exception as e:
         print(f"[discord] failed to send notification: {e}")
