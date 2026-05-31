@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+echo "=== Installing system dependencies ==="
+sudo apt install -y python3.11-venv
+
 echo "=== Creating Python virtual environment ==="
 python3 -m venv venv
 
