@@ -1,8 +1,11 @@
 #!/bin/bash
 set -e
 
+echo "=== Creating Python virtual environment ==="
+python3 -m venv venv
+
 echo "=== Installing Python dependencies ==="
-pip3 install -r requirements.txt
+venv/bin/pip install -r requirements.txt
 
 echo "=== Installing systemd service ==="
 sudo cp pokemon-bot.service /etc/systemd/system/
