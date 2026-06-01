@@ -60,6 +60,41 @@ def _base_params(keyword: str, purchasable_only: bool) -> dict:
     }
 
 
+def _is_pokemon_tcg(name: str, item: dict) -> bool:
+    """
+    Return True only if this is a Pokemon trading card product sold by Target directly.
+
+    Two checks:
+    1. item.fulfillment.is_marketplace — explicit flag Target sets for third-party sellers.
+       Filters out resellers listing at inflated prices (e.g. $879 Charizard UPC).
+    2. item_type name must be a trading card category, and the product name must contain
+       'pokemon'. Filters out action figures, board games, and plushes that appear in
+       the same search results.
+    """
+    # Drop third-party marketplace sellers — Target sets this flag explicitly
+    is_marketplace = item.get("item", {}).get("fulfillment", {}).get("is_marketplace", False)
+    if is_marketplace:
+        return False
+
+    # Must be Pokemon
+    if "pokemon" not in name.lower():
+        return False
+
+    # Must be a trading card product, not a toy/game/figure
+    item_type = (
+        item.get("item", {})
+            .get("product_classification", {})
+            .get("item_type", {})
+            .get("name", "")
+            .lower()
+    )
+    card_types = {"collectible trading cards", "trading cards", "card games"}
+    if not any(t in item_type for t in card_types):
+        return False
+
+    return True
+
+
 def _parse_products(data: dict) -> list[dict]:
     items = (
         data.get("data", {})
@@ -77,6 +112,10 @@ def _parse_products(data: dict) -> list[dict]:
                 .get("title", "Unknown Product")
         )
         name = html_lib.unescape(raw_title)
+
+        if not _is_pokemon_tcg(name, item):
+            continue
+
         slug = name.lower().replace(" ", "-")[:60]
         price = item.get("price", {}).get("formatted_current_price", "N/A")
         url = f"https://www.target.com/p/{slug}/-/A-{tcin}"
